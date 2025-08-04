@@ -1,0 +1,16 @@
+Condition for buy met at time_stamp: 02-01-2025 09:30
+Condition for sell met at time_stamp: 02-01-2025 10:05
+Condition for buy met at time_stamp: 02-01-2025 10:35
+Condition for sell met at time_stamp: 02-01-2025 10:50
+Condition for buy met at time_stamp: 02-01-2025 11:25
+Condition for sell met at time_stamp: 02-01-2025 11:30
+Condition for buy met at time_stamp: 02-01-2025 11:55
+Condition for sell met at time_stamp: 02-01-2025 12:00
+Condition for buy met at time_stamp: 02-01-2025 12:05
+Condition for sell met at time_stamp: 02-01-2025 12:10
+Condition for buy met at time_stamp: 02-01-2025 12:15
+Condition for buy met at time_stamp: 02-01-2025 13:30
+Condition for buy met at time_stamp: 02-01-2025 14:15
+Condition for sell met at time_stamp: 02-01-2025 14:20
+Condition for buy met at time_stamp: 02-01-2025 15:05
+Condition for sell met at time_stamp: 02-01-2025 15:25
