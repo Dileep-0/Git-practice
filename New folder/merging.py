@@ -47,6 +47,10 @@ def aggregate_file(df, file_id):
         total_diff_size = (group['bid_size'] - group['ask_size']).sum()
         total_diff_price = (group['bid_price'] - group['ask_price']).sum()
 
+        volume = group_diff['vol_traded_today'].sum()
+        volume_count = group_diff['vol_traded_today']
+        non_zero_count = (volume_count != 0).sum()
+
         # === Common aggregations ===
         ltp = group_diff['ltp'].sum()
         bid_price = group_diff['bid_price'].sum()
@@ -61,7 +65,6 @@ def aggregate_file(df, file_id):
         last_trade = group_diff['last_traded_qty'].sum()
         buy_qty = group_diff['tot_buy_qty'].sum()
         sell_qty = group_diff['tot_sell_qty'].sum()
-        avg_trade = group_diff['avg_trade_price'].sum()
         ch = group_diff['ch'].sum()
         chp = group_diff['chp'].sum()
         h_bid = group['bid_price'].max()
@@ -79,6 +82,11 @@ def aggregate_file(df, file_id):
             open = group['ltp'].iloc[0]
         else:
             open = 0 
+
+        if 'avg_trade_price' in group and not group['avg_trade_price'].empty:
+            avg_trade = group['avg_trade_price'].iloc[-1]
+        else:
+            avg_trade = 0
 
 
         # === Signals ===
@@ -125,31 +133,33 @@ def aggregate_file(df, file_id):
             'last_traded_time': name,
             #f'group_size_{file_id}': len(group),
             f'ltp_{file_id}': ltp,
+            f'vol_traded_today_{file_id}': volume,     #1
+            f'non_zero_vol_{file_id}' : non_zero_count,
+            f'bid_{file_id}' : bid,
+            f'ask_{file_id}' : ask,
             f'bid_price_{file_id}': bid_price,
             f'ask_price_{file_id}': ask_price,
+            f'bid_ask_diff{file_id}': bid_ask_diff,
             f'bid_ask_pr_diff_{file_id}': bid_ask_pr_diff,
+            f'last_traded_qty_{file_id}': last_trade,
             #f'price_diff{file_id}': total_diff_price,
-            f'bid_size{file_id}': bid,
-            f'ask_size{file_id}': ask,
+            #f'bid_size{file_id}': bid,
+            #f'ask_size{file_id}': ask,
             #f'size_diff{file_id}': total_diff_size,
             #f'h_bid_{file_id}': h_bid,
             #f'l_bid_{file_id}': l_bid,
             #f'h_ask_{file_id}': h_ask,
             #f'l_ask_{file_id}': l_ask,
-            f'volume_{file_id}': volume,
-            #f'last_traded_qty_{file_id}': last_trade,
+            #f'volume_{file_id}': volume,
             f'tot_buy_qty_{file_id}': buy_qty,
             f'tot_buy_sig_{file_id}': tot_buy_sig,
             f'tot_sell_qty_{file_id}': sell_qty,
             f'tot_sell_sig_{file_id}': tot_sell_sig,
-            #f'avg_trade_price_{file_id}': avg_trade,
-            #f'ch_{file_id}': ch,
-            #f'chp_{file_id}': chp,
-
-            f'high_{file_id}': high,
-            f'low_{file_id}': low,
+            f'avg_trade_price_{file_id}': avg_trade,
             f'open_{file_id}': open,
-            f'close_{file_id}': close
+            f'close_{file_id}': close,
+            f'high_{file_id}': high,
+            f'low_{file_id}': low
         }
         aggregated_data.append(row)
 

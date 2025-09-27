@@ -4,7 +4,7 @@ import pandas as pd
 
 
 script4 = 'signals_criteria.py'
-script5 = 'previous_signals.py'
+script5 = 'only_base.py'
 
 csv_file = 'Months_data_july.csv'
 

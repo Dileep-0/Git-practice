@@ -42,6 +42,9 @@ def conversion(input_file):
         ask_price = group_diff['ask_price'].sum()
         
         volume = group_diff['vol_traded_today'].sum()
+        volume_count = group_diff['vol_traded_today']
+        non_zero_count = (volume_count != 0).sum()
+        ch = group_diff['ch'].sum()
         bid = group_sum['bid_size']
         ask = group_sum['ask_size']
         bid_pr = group_sum['bid_price']
@@ -53,7 +56,10 @@ def conversion(input_file):
         last_trade = group_sum['last_traded_qty']
         buy_qty = group_diff['tot_buy_qty'].sum()
         sell_qty = group_diff['tot_sell_qty'].sum()
-        avg_trade = group_diff['avg_trade_price'].sum()
+        if 'avg_trade_price' in group and not group['avg_trade_price'].empty:
+            avg_trade = group['avg_trade_price'].iloc[-1]
+        else:
+            avg_trade = 0 
 
         senti="Buy" if bid > ask else "Sell"
 
@@ -99,8 +105,10 @@ def conversion(input_file):
         row = {
             'last_traded_time': name,  # Use the start time of the interval
             'ltp' : ltp,
-            #'vol_traded_today': volume,     #1
-            #'vol_sig' : signal,
+            'vol_traded_today': volume,
+            'non_zero_vol' : non_zero_count,
+            'bid' : bid,
+            'ask' : ask,
             'bid_price' : bid_price,               #2
             'ask_price' : ask_price, 
             'ce_bid_ask_diff' : bid_ask_diff,
@@ -111,8 +119,8 @@ def conversion(input_file):
             'tot_buy_sig' : tot_buy_sig,
             'tot_sell_qty' : sell_qty,       #6
             'tot_sell_sig' : tot_sell_sig,
-            'open' : open,
-            'close' : close,
+            'open_2' : open,
+            'close_2' : close,
             'high' : high,
             'low' : low,
             'avg_trade_price': avg_trade

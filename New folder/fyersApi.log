@@ -1,0 +1,1 @@
+{"level":"ERROR","location":"[get_call:143] fyersModel","message":{"API":"/history","Error":{"code":-16,"message":"Could not authenticate the user","s":"error"}},"timestamp":"2025-09-08 16:09:00,820+0530","service":"FyersAPI"}

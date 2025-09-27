@@ -51,9 +51,15 @@ def conversion(input_file):
             avg_trade = group['avg_trade_price'].iloc[-1]
         else:
             avg_trade = 0 
+
+        high = group['ltp'].max()
+        low = group['ltp'].min()
         
 
         volume = group_diff['vol_traded_today'].sum()
+        volume_count = group_diff['vol_traded_today']
+        non_zero_count = (volume_count != 0).sum()
+        ch = group_diff['ch'].sum()
 
         bid = group_sum['bid_size']
         ask = group_sum['ask_size']
@@ -108,8 +114,10 @@ def conversion(input_file):
         row = {
             'last_traded_time': formatted_time,  # Use the start time of the interval
                 'ltp' : ltp,
-                #'vol_traded_today': volume,     #1
-                #'vol_sig' : signal,
+                'vol_traded_today': volume,     #1
+                'non_zero_vol' : non_zero_count,
+                'bid' : bid,
+                'ask' : ask,
                 'bid_price' : bid_price,               #2
                 'ask_price' : ask_price,
                 'n_bid_ask_diff' : bid_ask_diff,
@@ -121,8 +129,10 @@ def conversion(input_file):
                 'tot_sell_qty' : sell_qty,       #6
                 'tot_sell_sig' : tot_sell_sig,
                 'avg_trade_price': avg_trade,
-                'Open_NSE:NIFTY50-INDEX' : open,
-                'Close_9' : close
+                'open_1' : open,
+                'close_1' : close,
+                'high' : high,
+                'low':low
                 #'sentiment' : senti
 
             }

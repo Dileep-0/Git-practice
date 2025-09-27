@@ -1,4 +1,5 @@
 import os
+import math
 import pandas as pd
 
 import filenames
@@ -7,8 +8,8 @@ file_path = filenames.signals
 # Load the CSV file
 df = pd.read_csv(file_path)
 df['last_traded_time'] = pd.to_datetime(df['last_traded_time'], dayfirst=True, errors='coerce')
-date, file_name = file_path.split("_", 1)
-output_file = f"{date}_signals.txt"
+'''date, file_name = file_path.split("_", 1)
+output_file = f"{date}_signals.txt"'''
 columns = pd.Series(df.columns)
 
 # Check if the required columns exist
@@ -50,10 +51,13 @@ if all(column in df.columns for column in required_columns):
 
             buy_sum = sum([curr_buy, curr_buy_ce, curr_sell_pe])
             sell_sum = sum([curr_sell, curr_sell_ce, curr_buy_pe])
+            contract_sum = buy_sum + sell_sum
 
             prev_buy, prev_sell = current_row['tot_buy_qty'], current_row['tot_sell_qty']
             prev_buy_ce, prev_sell_ce = current_row['tot_buy_qty.1'], current_row['tot_sell_qty.1']
             prev_buy_pe, prev_sell_pe = current_row['tot_buy_qty.2'], current_row['tot_sell_qty.2']
+            n_high, n_low = current_row['high'], current_row['low']
+            n_open, n_close = current_row['open_1'], current_row['close_1']
 
             change_in_buy = buy_sum
             change_in_sell = sell_sum
@@ -81,21 +85,42 @@ if all(column in df.columns for column in required_columns):
             n_open, n_close = current_row['open_1'], current_row['close_1']
             ce_open, ce_close = current_row['open_2'], current_row['close_2']
             pe_open, pe_close = current_row['open_3'], current_row['close_3']
-            ind_open, ind_close = current_row['open'], current_row['close']
+            n_high, n_low = current_row['high'], current_row['low']
 
-            ba_pr_dif = abs(bid_pr - ask_pr)
+            bid_size, ask_size = current_row['bid'], current_row['ask']
+            bid_ce, ask_ce = current_row['bid.1'], current_row['ask.1']
+            bid_pe, ask_pe = current_row['bid.2'], current_row['ask.2']
+
+
+            n_atp = current_row['avg_trade_price']
+
+            volume_nifty = current_row['vol_traded_today']
+            volume_nifty_ce = current_row['vol_traded_today.1']
+            volume_nifty_pe = current_row['vol_traded_today.2']
+
+            count_nifty = current_row['non_zero_vol']
+            count_nifty_ce = current_row['non_zero_vol.1']
+            count_nifty_pe = current_row['non_zero_vol.2']
 
             buy_sum = sum([curr_buy, curr_buy_ce, curr_sell_pe])
             sell_sum = sum([curr_sell, curr_sell_ce, curr_buy_pe])
+            contract_sum = buy_sum + sell_sum
 
             previous_row = df.iloc[i-1]
 
             prev_n_close = previous_row['close_1']
             prev_ce_close = previous_row['close_2']
             prev_pe_close = previous_row['close_3']
-            ind_prev_close = previous_row['close']
 
             prev_ltp_price = previous_row['ltp']
+
+            prev_volume_nifty = previous_row['vol_traded_today']
+            prev_volume_nifty_ce = previous_row['vol_traded_today.1']
+            prev_volume_nifty_pe = previous_row['vol_traded_today.2']
+
+            prev_count_nifty = previous_row['non_zero_vol']
+            prev_count_nifty_ce = previous_row['non_zero_vol.1']
+            prev_count_nifty_pe = previous_row['non_zero_vol.2']
 
             prev_buy, prev_sell = previous_row['tot_buy_qty'], previous_row['tot_sell_qty']
             prev_buy_ce, prev_sell_ce = previous_row['tot_buy_qty.1'], previous_row['tot_sell_qty.1']
@@ -106,11 +131,16 @@ if all(column in df.columns for column in required_columns):
 
             prev_buy_sum = sum([prev_buy, prev_buy_ce, prev_sell_pe])
             prev_sell_sum = sum([prev_sell, prev_sell_ce, prev_buy_pe])
+            prev_contarct_sum = prev_buy_sum + prev_sell_sum
+
+            contract_ratio = abs((contract_sum - prev_contarct_sum)/prev_contarct_sum)
+            buy_cont_ratio = abs(contract_sum/buy_sum)
+            sell_cont_ratio = abs(contract_sum/sell_sum)
+            ratio_diff = (buy_cont_ratio - sell_cont_ratio)
             
             fut_n_open = future_row['open_1']
             fut_ce_open = future_row['open_2']
             fut_pe_open = future_row['open_3']
-            fut_ind_open = future_row['open']
 
             change_in_buy = buy_sum + prev_buy_sum if buy_sum * prev_buy_sum > 0 else buy_sum - prev_buy_sum
             change_in_sell = sell_sum + prev_sell_sum if sell_sum * prev_sell_sum > 0 else sell_sum - prev_sell_sum
@@ -122,23 +152,81 @@ if all(column in df.columns for column in required_columns):
         ask_sum = ask_pr + ask_pr_ce + bid_pr_pe
         #print(bid_sum, ask_sum)
 
-        
+        def length_check(cont_sum, prev_cont_sum):
+            if cont_sum is None or prev_cont_sum is None:
+                return 0
+            
+            if math.isnan(cont_sum) or math.isnan(prev_cont_sum):
+                return 0
+            cont_sum, prev_cont_sum = len(str(int(abs(cont_sum)))), len(str(int(abs(prev_cont_sum))))
+            max_len = max(cont_sum, prev_cont_sum)
+            return max_len
+            
+        def candle_pattern(open_price, high_price, low_price, close_price):
+            body = abs(close_price - open_price)
+            upper_shadow = high_price - max(open_price, close_price)
+            lower_shadow = min(open_price, close_price) - low_price
+            total_range = high_price - low_price
 
+            if body == 0:
+                body = 0.0001  # avoid division by zero
+
+            # Hammer check
+            is_hammer = (
+                lower_shadow >= 2.5 * body and
+                upper_shadow <= 0.25 * body and
+                (high_price - max(open_price, close_price)) <= total_range * 0.2
+            )
+
+            # Shooting star check
+            is_shooting_star = (
+                upper_shadow >= 2.5 * body and
+                lower_shadow <= 0.25 * body and
+                (min(open_price, close_price) - low_price) <= total_range * 0.2
+            )
+
+            if is_hammer or is_shooting_star:
+                return True
+            else:
+                return False
+
+        length = n_high - n_low
+        body = abs(n_open - n_close)
+        buy_atp_eff = n_low - 50
+        sell_atp_eff = n_high + 50
+        body_per =  abs(length)/2 < body 
+        ltp_check_2 = abs(length) > 14 and body_per and abs(ltp_price) > 12
+
+        candle_patterns = candle_pattern(n_open, n_high, n_low, n_close)
+        
         
         if i > 0:
-            pr_diff = prev_ba_pr_diff - ba_pr_dif
             '''buy_candle = n_close < fut_n_open 
             sell_candle = n_close > fut_n_open'''
-            b_fut = sum([ind_close <= fut_ind_open, n_close <= fut_n_open, ce_close <= fut_ce_open, pe_close >= fut_pe_open]) >= 3
-            b_prev = sum([ind_prev_close <= ind_open, prev_n_close <= n_open, prev_ce_close <= ce_open, prev_pe_close >= pe_open]) >= 2
+            
+            avg_trade_buy = (n_atp < (n_close + 20) and buy_atp_eff < n_atp ) or ((n_high + 75) < n_atp)
+            avg_trade_sell = (n_atp > (n_close - 20) and sell_atp_eff > n_atp) or ((n_low - 75) > n_atp)
 
-            s_fut = sum([ind_close >= fut_ind_open, n_close >= fut_n_open, ce_close >= fut_ce_open, pe_close <= fut_pe_open]) >= 3
-            s_prev = sum([ind_prev_close >= ind_open, prev_n_close >= n_open, prev_ce_close >= ce_open, prev_pe_close <= pe_open]) >= 2
-            print(ind_prev_close,ind_open,ind_close,fut_ind_open, prev_n_close,n_open,n_close,fut_n_open )
-            
-            
-            buy_candle = b_fut and b_prev
-            sell_candle = s_fut and s_prev
+            volume_check = sum([prev_volume_nifty < volume_nifty, prev_volume_nifty_ce < volume_nifty_ce, prev_volume_nifty_pe < volume_nifty_pe]) >= 1
+            count_check =  (
+                                (-50 <= count_nifty - prev_count_nifty ) or
+                                (-50 <= count_nifty_ce - prev_count_nifty_ce ) or
+                                (-50 <= count_nifty_pe - prev_count_nifty_pe )
+                            )
+            volume_count = volume_check and count_check 
+
+            cont_len = length_check(contract_sum, prev_contarct_sum)
+            diff_signs = contract_sum*prev_contarct_sum < 0
+
+
+            if cont_len > 5 and diff_signs:
+                contracts_check = (contract_ratio > 1.45 or (max(buy_cont_ratio, sell_cont_ratio) > 1.5 and ratio_diff > 0.9))
+            elif (cont_len == 5 and diff_signs) or (cont_len == 5 and not diff_signs):
+                contracts_check = (contract_ratio > 2 or max(buy_cont_ratio, sell_cont_ratio) > 2)
+            elif cont_len > 5 and not diff_signs:
+                contracts_check = (contract_ratio > 2 or max(buy_cont_ratio, sell_cont_ratio) > 2)
+            else:
+                contracts_check = False
 
         min_ltp = min(abs(ltp_price), abs(bid_pr), abs(ask_pr))
         max_ltp = max(abs(ltp_price), abs(bid_pr), abs(ask_pr))
@@ -185,7 +273,9 @@ if all(column in df.columns for column in required_columns):
             ltp_ni_check, ltp_ce_check, ltp_pe_check = False, False, False
             ltp_check = 0
             ltp_check_2 = 0'''
-        if sum(l) >= 2:
+        
+
+        if ((abs(ltp_price) >= 15 or abs(prev_ltp_price) > 20) and sum(l) >= 2)  or candle_patterns: 
             ltp_check = True
         else:
             ltp_check = False
@@ -315,16 +405,16 @@ if all(column in df.columns for column in required_columns):
         '''ltp_check_less = sum([ltp_ni_check_less, ltp_ce_check_less, ltp_pe_check_less]) >= 3'''
         #and ((pr_diff>0) or (prev_ba_pr_diff < 1.5 and ba_pr_dif > 2.9) or (pr_diff<0 and prev_ba_pr_diff < 0.55))
 
-        if ltp_check and count_Y > 3 and buy_candle \
+        if ltp_check and count_Y > 3 and avg_trade_buy and  contracts_check\
             and (((buy_sum > prev_buy_sum) and (sell_sum < prev_sell_sum)) or (buy_sum > 0 and sell_sum < 0)) \
             and ((buy_sum * prev_buy_sum < 0) or (len(str(abs(prev_buy_sum))) < len(str(abs(buy_sum)))) or 
             (sell_sum * prev_sell_sum < 0) or (len(str(abs(prev_sell_sum))) < len(str(abs(sell_sum))))) :
             
             buy_flag = True
             print(f"{current_row['last_traded_time']} - buy")
+            print("nifty :", bid_size, ask_size, "ce :", bid_ce, ask_ce)
             
-            
-        elif ltp_check and count_Y == 3 and count_N >= 1 and buy_candle \
+        elif ltp_check and count_Y == 3 and count_N >= 1 and avg_trade_buy and  contracts_check\
             and (((buy_sum > prev_buy_sum) and (sell_sum < prev_sell_sum)) or (buy_sum > 0 and sell_sum < 0)) \
             and ((buy_sum * prev_buy_sum < 0) or (len(str(abs(prev_buy_sum))) < len(str(abs(buy_sum)))) or 
             (sell_sum * prev_sell_sum < 0) or (len(str(abs(prev_sell_sum))) < len(str(abs(sell_sum))))) :
@@ -332,6 +422,7 @@ if all(column in df.columns for column in required_columns):
             if buy_flow_res > 3:
                 buy_flag = True
                 print(f"{current_row['last_traded_time']} - buy")
+                print("nifty :", bid_size, ask_size, "ce :", bid_ce, ask_ce, "pe :", bid_pe, ask_pe)
 
             else:
                 buy_flag=False
@@ -339,19 +430,21 @@ if all(column in df.columns for column in required_columns):
             buy_flag = False
 
         if not buy_flag:
-            if ltp_check and count_YES > 3  and sell_candle \
+            if ltp_check and count_YES > 3  and avg_trade_sell and  contracts_check\
                 and (((buy_sum < prev_buy_sum) and (sell_sum > prev_sell_sum)) or (buy_sum < 0 and sell_sum > 0)) \
                 and ((buy_sum * prev_buy_sum < 0) or (len(str(abs(prev_buy_sum))) < len(str(abs(buy_sum)))) or 
                     (sell_sum * prev_sell_sum < 0) or (len(str(abs(prev_sell_sum))) < len(str(abs(sell_sum))))) :
                 print(f"{current_row['last_traded_time']} - sell")
+                print("nifty :", bid_size, ask_size, "ce :", bid_ce, ask_ce, "pe :", bid_pe, ask_pe)
 
-            elif ltp_check and count_YES == 3 and count_N >= 1 and sell_candle \
+            elif ltp_check and count_YES == 3 and count_N >= 1 and avg_trade_sell and  contracts_check\
                 and (((buy_sum < prev_buy_sum) and (sell_sum > prev_sell_sum)) or (buy_sum < 0 and sell_sum > 0)) \
                 and ((buy_sum * prev_buy_sum < 0) or (len(str(abs(prev_buy_sum))) < len(str(abs(buy_sum)))) or 
                     (sell_sum * prev_sell_sum < 0) or (len(str(abs(prev_sell_sum))) < len(str(abs(sell_sum))))) :
                 sell_flow_res =  sell_flow(data, conditions2)
                 if sell_flow_res > 3:
                     print(f"{current_row['last_traded_time']} - sell")
+                    print("nifty :", bid_size, ask_size, "ce :", bid_ce, ask_ce, "pe :", bid_pe, ask_pe)
 
         b_len_prev, s_len_prev = b_len_curr, s_len_curr
         p_change_in_buy, p_change_in_sell = change_in_buy, change_in_sell

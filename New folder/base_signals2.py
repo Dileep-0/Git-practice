@@ -4,7 +4,7 @@ import pandas as pd
 
 
 script4 = 'signals_criteria.py'
-script5 = 'base_ohlc.py'
+script5 = 'prev_signals_aug.py'
 
 # Run all scripts simultaneously
 
